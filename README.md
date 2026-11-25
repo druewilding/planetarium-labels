@@ -70,8 +70,9 @@ The **Build and publish** workflow:
 3. Merges them into the site and publishes it on GitHub Pages, at <https://www.druewilding.com/planetarium-labels/>.
    If any region fails, nothing is published and the last build stays up.
 
-It runs when the regions or the code change on `main`, on the first of every third month, and by hand from the Actions
-tab.
+It runs on the first of every third month (January, April, July and October, at 04:00 UTC), since peaks and villages
+hardly change, and when you start it from the Actions tab (Build and publish → Run workflow). If a run starts while
+another is going, it waits its turn.
 
 ## Licence
 
