@@ -1,0 +1,23 @@
+{
+  "name": "planetarium-labels",
+  "version": "0.1.0",
+  "description": "Names for the land around you in the planetarium: peaks, places and landmarks from OpenStreetMap, in 1° squares",
+  "license": "ISC",
+  "author": "Drue Wilding",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint --fix",
+    "lint:check": "eslint",
+    "package:lint": "npx npm-package-json-lint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "eslint-config-plus-prettier": "4.2.4",
+    "vitest": "5.0.3"
+  },
+  "prettier": "eslint-config-plus-prettier/prettier"
+}

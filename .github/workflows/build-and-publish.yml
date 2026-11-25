@@ -1,0 +1,49 @@
+name: Build and publish
+
+# Builds the label squares from fresh Geofabrik extracts and publishes them on
+# GitHub Pages. Runs when the regions or the code change on main, and on the first
+# of every third month: peaks and villages hardly change. You can also run it by
+# hand (Actions → Build and publish → Run workflow).
+on:
+  push:
+    branches: [main]
+    paths: [regions.json, src/**, tools/**, package.json, .github/workflows/build-and-publish.yml]
+  schedule:
+    - cron: "0 4 1 */3 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: sudo apt-get update && sudo apt-get install -y osmium-tool
+      - run: npm install
+      - run: npm run lint:check
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
