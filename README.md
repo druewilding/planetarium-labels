@@ -37,21 +37,41 @@ Each label is a row: `[id, kind, lat, lon, name, number]`.
 
 ## Building
 
-Needs Node and [osmium](https://osmcode.org/osmium-tool/) (`brew install osmium-tool`).
+`regions.json` lists Geofabrik's nine top-level regions, which together cover the whole world (about 90 GB of
+extracts). The build has two steps:
+
+1. **Rows:** for each region, download its extract, keep what's worth a label, and write it to
+   `rows/<region>.ndjson`, one row per line.
+2. **Site:** merge every region's rows (keeping one of each thing where regions overlap at their borders) into the
+   squares and `index.json`, in `site/`. It stops if any region's rows are missing, so the site is only ever whole.
+
+Needs Node, curl and [osmium](https://osmcode.org/osmium-tool/) (`brew install osmium-tool`). To try it on your own
+computer, name a few small regions instead of building the world:
 
 ```sh
 npm install
-npm run build                          # the regions in regions.json
-npm run build -- europe/norway         # just these regions
-npm run build -- --fresh               # download the extracts again
+npm run build -- europe/denmark europe/norway   # both steps, for just these regions
+npm run build -- europe/denmark --tidy          # delete each extract once it's done, to save disk
+npm run build -- europe/denmark --fresh         # download the extracts again
+npm run rows -- europe/denmark                  # just step 1
+npm run site -- europe/denmark                  # just step 2
 ```
 
-Extracts are downloaded to `cache/` and kept there; the files to publish are written to `site/`. Region names are
-Geofabrik's paths, as in `https://download.geofabrik.de/europe/norway.html`.
+Extracts are downloaded to `cache/` (or `CACHE_DIR`). Region names are Geofabrik's paths, as in
+`https://download.geofabrik.de/europe/norway.html`.
 
-The **Build and publish** workflow builds the regions in `regions.json` and publishes `site/` on GitHub Pages, at
-<https://www.druewilding.com/planetarium-labels/>. It runs when the regions or the code change on `main`, on the first of
-every third month, and by hand from the Actions tab.
+### On GitHub
+
+The **Build and publish** workflow:
+
+1. Checks the code (lint and tests).
+2. Builds each region's rows in its own job, side by side. Europe's extract is over 35 GB, so the jobs download to the
+   runner's second disk, or clear space on the main one.
+3. Merges them into the site and publishes it on GitHub Pages, at <https://www.druewilding.com/planetarium-labels/>.
+   If any region fails, nothing is published and the last build stays up.
+
+It runs when the regions or the code change on `main`, on the first of every third month, and by hand from the Actions
+tab.
 
 ## Licence
 

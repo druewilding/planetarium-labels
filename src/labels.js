@@ -67,6 +67,25 @@ export function centre(geometry) {
   return { lat: (s + n) / 2, lon: (w + e) / 2 };
 }
 
+/**
+ * Rows grouped into squares, as [key, rows] sorted by key, each square's rows
+ * sorted by id: the same order every build, for tidy diffs. Keeps one of each id,
+ * since neighbouring extracts overlap at their borders.
+ */
+export function squaresOf(rows) {
+  const byId = new Map();
+  for (const row of rows) byId.set(row[0], row);
+  const squares = new Map();
+  for (const row of byId.values()) {
+    const key = squareKey(row[2], row[3]);
+    if (!squares.has(key)) squares.set(key, []);
+    squares.get(key).push(row);
+  }
+  const byKey = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+  for (const list of squares.values()) list.sort((a, b) => byKey(a[0], b[0]));
+  return [...squares].sort(([a], [b]) => byKey(a, b));
+}
+
 const round = (x, places) => Math.round(x * 10 ** places) / 10 ** places;
 
 /** The row for one GeoJSON feature from `osmium export --attributes type,id`, or null. */

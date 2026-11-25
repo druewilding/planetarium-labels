@@ -12,6 +12,8 @@
     "lint": "eslint --fix",
     "lint:check": "eslint",
     "package:lint": "npx npm-package-json-lint .",
+    "rows": "node tools/rows.mjs",
+    "site": "node tools/site.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
