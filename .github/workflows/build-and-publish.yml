@@ -1,9 +1,13 @@
 name: Build and publish
 
 # Builds the label squares from fresh Geofabrik extracts and publishes them on
-# GitHub Pages. Runs when the regions or the code change on main, and on the first
-# of every third month: peaks and villages hardly change. You can also run it by
-# hand (Actions → Build and publish → Run workflow).
+# GitHub Pages. Each region in regions.json is filtered in its own job, side by
+# side; then their rows are merged into squares and published in one go, so the
+# whole world updates at once. If any region fails, nothing is published.
+#
+# Runs when the regions or the code change on main, and on the first of every
+# third month: peaks and villages hardly change. You can also run it by hand
+# (Actions → Build and publish → Run workflow).
 on:
   push:
     branches: [main]
@@ -22,8 +26,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # Check the code before downloading the world.
+  check:
     runs-on: ubuntu-latest
+    outputs:
+      regions: ${{ steps.regions.outputs.regions }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install
+      - run: npm run lint:check
+      - run: npm test
+      - id: regions
+        run: echo "regions=$(jq -c . regions.json)" >> "$GITHUB_OUTPUT"
+
+  rows:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: true
+      matrix:
+        region: ${{ fromJSON(needs.check.outputs.regions) }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -31,15 +57,49 @@ jobs:
           node-version: 24
       - run: sudo apt-get update && sudo apt-get install -y osmium-tool
       - run: npm install
-      - run: npm run lint:check
-      - run: npm test
-      - run: npm run build
+      # Europe is over 35 GB. Runners usually have a second disk at /mnt with room
+      # for it; if not, clear the tools we don't need off the main disk instead.
+      - name: Make room for the extract
+        run: |
+          free() { df --output=avail -BG "$1" | tail -1 | tr -dc 0-9; }
+          if [ "$(free /mnt)" -ge 45 ]; then
+            sudo mkdir -p /mnt/cache && sudo chown "$USER" /mnt/cache
+            echo "CACHE_DIR=/mnt/cache" >> "$GITHUB_ENV"
+          else
+            sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+            echo "CACHE_DIR=$RUNNER_TEMP/cache" >> "$GITHUB_ENV"
+          fi
+          df -h / /mnt
+      - run: npm run rows -- "$REGION" --tidy
+        env:
+          REGION: ${{ matrix.region }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rows-${{ strategy.job-index }}
+          path: rows/
+          retention-days: 1
+
+  site:
+    needs: rows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: rows-*
+          path: rows/
+          merge-multiple: true
+      - run: npm run site
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
   deploy:
-    needs: build
+    needs: site
     runs-on: ubuntu-latest
     environment:
       name: github-pages

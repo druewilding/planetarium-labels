@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { centre, classify, squareKey, toRow } from "../src/labels.js";
+import { centre, classify, squareKey, squaresOf, toRow } from "../src/labels.js";
 
 describe("classify", () => {
   test("keeps named peaks, with their height", () => {
@@ -86,5 +86,25 @@ describe("toRow", () => {
       properties: { "@type": "way", "@id": 7, man_made: "lighthouse" },
     };
     expect(toRow(feature)).toEqual(["w7", "lighthouse", 58, 5, ""]);
+  });
+});
+
+describe("squaresOf", () => {
+  const oslo = ["n2", "city", 59.91, 10.75, "Oslo", 709037];
+  const tryvann = ["w9", "tower", 59.98, 10.67, "Tryvannstårnet", 118];
+  const lom = ["n1", "town", 61.84, 8.57, "Lom", 2300];
+
+  test("groups rows into their squares, in order", () => {
+    expect(squaresOf([lom, tryvann, oslo])).toEqual([
+      ["59_10", [oslo, tryvann]],
+      ["61_8", [lom]],
+    ]);
+  });
+
+  test("keeps one of each thing where regions overlap", () => {
+    expect(squaresOf([oslo, oslo, lom])).toEqual([
+      ["59_10", [oslo]],
+      ["61_8", [lom]],
+    ]);
   });
 });
